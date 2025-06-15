@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Alerts GPS Overlay</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 15px;
+            font-family: 'Arial', sans-serif;
+            background: transparent;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 500px;
+        }
+
+        .location-container {
+            background: linear-gradient(135deg, rgba(0, 100, 200, 0.9), rgba(0, 150, 255, 0.9));
+            border-radius: 12px;
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .weather-container {
+            background: linear-gradient(135deg, rgba(255, 100, 0, 0.9), rgba(255, 150, 0, 0.9));
+            border-radius: 12px;
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+
+        .weather-container.active {
+            display: block;
+        }
+
+        .weather-container.severe {
+            background: linear-gradient(135deg, rgba(220, 20, 60, 0.95), rgba(255, 69, 0, 0.95));
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.9; }
+            50% { opacity: 1; }
+        }
+
+        .title {
+            font-size: 18px;
+            margin-bottom: 12px;
+            text-align: center;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .status.loading {
+            background: rgba(255, 193, 7, 0.8);
+            color: #000;
+        }
+
+        .status.error {
+            background: rgba(220, 53, 69, 0.8);
+            color: #fff;
+        }
+
+        .status.success {
+            background: rgba(40, 167, 69, 0.8);
+            color: #fff;
+        }
+
+        .coordinate-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 13px;
+        }
+
+        .coordinate-row:last-child {
+            border-bottom: none;
+        }
+
+        .label {
+            color: #e0e0e0;
+        }
+
+        .value {
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+        }
+
+        .alert-item {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            border-left: 4px solid #fff;
+        }
+
+        .alert-item.severe {
+            border-left-color: #ff0000;
+            background: rgba(255, 0, 0, 0.2);
+        }
+
+        .alert-item.moderate {
+            border-left-color: #ffa500;
+            background: rgba(255, 165, 0, 0.2);
+        }
+
+        .alert-item.minor {
+            border-left-color: #ffff00;
+            background: rgba(255, 255, 0, 0.1);
+        }
+
+        .alert-title {
+            font-size: 16px;
+            margin-bottom: 6px;
+            color: #ffffff;
+        }
+
+        .alert-description {
+            font-size: 13px;
+            color: #e0e0e0;
+            line-height: 1.4;
+            margin-bottom: 6px;
+        }
+
+        .alert-time {
+            font-size: 11px;
+            color: #cccccc;
+            font-style: italic;
+        }
+
+        .no-alerts {
+            text-align: center;
+            color: #90EE90;
+            font-size: 16px;
+            padding: 15px;
+        }
+
+        .update-time {
+            text-align: center;
+            font-size: 11px;
+            color: #cccccc;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Location Section -->
+        <div class="location-container">
+            <div class="title">📍 Current Location</div>
+            
+            <div id="location-status" class="status loading">
+                🔍 Getting location...
+            </div>
+
+            <div id="location-data" style="display: none;">
+                <div class="coordinate-row">
+                    <span class="label">Lat/Lon:</span>
+                    <span class="value"><span id="latitude">--</span>, <span id="longitude">--</span></span>
+                </div>
+                <div class="coordinate-row">
+                    <span class="label">Accuracy:</span>
+                    <span class="value" id="accuracy">--</span>
+                </div>
+                <div class="update-time" id="location-update-time">--</div>
+            </div>
+        </div>
+
+        <!-- Weather Alerts Section -->
+        <div class="weather-container" id="weather-container">
+            <div class="title">⚠️ Weather Alerts</div>
+            
+            <div id="weather-status" class="status loading">
+                🌤️ Loading weather alerts...
+            </div>
+
+            <div id="alerts-container"></div>
+            <div class="update-time" id="weather-update-time">--</div>
+        </div>
+    </div>
+
+    <script>
+        let watchId = null;
+        let currentLat = null;
+        let currentLon = null;
+        let lastLocationUpdate = null;
+        let lastWeatherUpdate = null;
+
+        const locationStatusEl = document.getElementById('location-status');
+        const locationDataEl = document.getElementById('location-data');
+        const weatherContainerEl = document.getElementById('weather-container');
+        const weatherStatusEl = document.getElementById('weather-status');
+        const alertsContainerEl = document.getElementById('alerts-container');
+        const latitudeEl = document.getElementById('latitude');
+        const longitudeEl = document.getElementById('longitude');
+        const accuracyEl = document.getElementById('accuracy');
+        const locationUpdateTimeEl = document.getElementById('location-update-time');
+        const weatherUpdateTimeEl = document.getElementById('weather-update-time');
+
+        function updateLocationStatus(message, type) {
+            locationStatusEl.textContent = message;
+            locationStatusEl.className = `status ${type}`;
+        }
+
+        function updateWeatherStatus(message, type) {
+            weatherStatusEl.textContent = message;
+            weatherStatusEl.className = `status ${type}`;
+        }
+
+        function formatCoordinate(coord) {
+            return coord.toFixed(4);
+        }
+
+        function formatAccuracy(accuracy) {
+            return `±${Math.round(accuracy)}m`;
+        }
+
+        async function fetchWeatherAlerts(lat, lon) {
+            try {
+                updateWeatherStatus('🌤️ Fetching weather alerts...', 'loading');
+                
+                // First get the grid point for the coordinates
+                const pointResponse = await fetch(`https://api.weather.gov/points/${lat},${lon}`);
+                if (!pointResponse.ok) {
+                    throw new Error(`Point API error: ${pointResponse.status}`);
+                }
+                
+                const pointData = await pointResponse.json();
+                const gridId = pointData.properties.gridId;
+                const gridX = pointData.properties.gridX;
+                const gridY = pointData.properties.gridY;
+                
+                // Get active alerts for the area
+                const alertsResponse = await fetch(`https://api.weather.gov/alerts/active?point=${lat},${lon}`);
+                if (!alertsResponse.ok) {
+                    throw new Error(`Alerts API error: ${alertsResponse.status}`);
+                }
+                
+                const alertsData = await alertsResponse.json();
+                displayWeatherAlerts(alertsData.features);
+                
+                lastWeatherUpdate = Date.now();
+                weatherUpdateTimeEl.textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+                
+            } catch (error) {
+                console.error('Weather API error:', error);
+                updateWeatherStatus(`❌ Weather error: ${error.message}`, 'error');
+            }
+        }
+
+        function getSeverityLevel(severity, urgency) {
+            if (severity === 'Severe' || urgency === 'Immediate') return 'severe';
+            if (severity === 'Moderate' || urgency === 'Expected') return 'moderate';
+            return 'minor';
+        }
+
+        function displayWeatherAlerts(alerts) {
+            alertsContainerEl.innerHTML = '';
+            
+            if (!alerts || alerts.length === 0) {
+                alertsContainerEl.innerHTML = '<div class="no-alerts">✅ No active weather alerts</div>';
+                updateWeatherStatus('✅ No alerts active', 'success');
+                weatherContainerEl.classList.remove('severe');
+                weatherContainerEl.classList.add('active');
+                return;
+            }
+
+            let hasSevereAlert = false;
+            
+            alerts.forEach(alert => {
+                const properties = alert.properties;
+                const severity = getSeverityLevel(properties.severity, properties.urgency);
+                
+                if (severity === 'severe') {
+                    hasSevereAlert = true;
+                }
+                
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert-item ${severity}`;
+                
+                const startTime = new Date(properties.onset).toLocaleString();
+                const endTime = properties.ends ? new Date(properties.ends).toLocaleString() : 'Unknown';
+                
+                alertDiv.innerHTML = `
+                    <div class="alert-title">${properties.event}</div>
+                    <div class="alert-description">${properties.headline || properties.description?.slice(0, 200) + '...' || 'No description available'}</div>
+                    <div class="alert-time">📅 ${startTime} - ${endTime}</div>
+                `;
+                
+                alertsContainerEl.appendChild(alertDiv);
+            });
+            
+            updateWeatherStatus(`⚠️ ${alerts.length} active alert${alerts.length > 1 ? 's' : ''}`, hasSevereAlert ? 'error' : 'loading');
+            
+            if (hasSevereAlert) {
+                weatherContainerEl.classList.add('severe');
+            } else {
+                weatherContainerEl.classList.remove('severe');
+            }
+            
+            weatherContainerEl.classList.add('active');
+        }
+
+        function onLocationSuccess(position) {
+            const { latitude, longitude, accuracy } = position.coords;
+            const timestamp = new Date(position.timestamp);
+            
+            currentLat = latitude;
+            currentLon = longitude;
+            
+            latitudeEl.textContent = formatCoordinate(latitude);
+            longitudeEl.textContent = formatCoordinate(longitude);
+            accuracyEl.textContent = formatAccuracy(accuracy);
+            locationUpdateTimeEl.textContent = `Updated: ${timestamp.toLocaleTimeString()}`;
+            
+            if (locationDataEl.style.display === 'none') {
+                updateLocationStatus('✅ Location acquired', 'success');
+                locationDataEl.style.display = 'block';
+                
+                // Fetch weather alerts for the first time
+                fetchWeatherAlerts(latitude, longitude);
+            }
+            
+            lastLocationUpdate = Date.now();
+        }
+
+        function onLocationError(error) {
+            let message = '❌ Location error: ';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message += 'Permission denied';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message += 'Position unavailable';
+                    break;
+                case error.TIMEOUT:
+                    message += 'Request timeout';
+                    break;
+                default:
+                    message += 'Unknown error';
+                    break;
+            }
+            updateLocationStatus(message, 'error');
+            locationDataEl.style.display = 'none';
+            weatherContainerEl.classList.remove('active');
+        }
+
+        function startLocationTracking() {
+            if (!navigator.geolocation) {
+                updateLocationStatus('❌ Geolocation not supported', 'error');
+                return;
+            }
+            
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 30000,
+                maximumAge: 60000 // Cache for 1 minute
+            };
+            
+            // Get initial position
+            navigator.geolocation.getCurrentPosition(onLocationSuccess, onLocationError, options);
+            
+            // Watch for position changes
+            watchId = navigator.geolocation.watchPosition(onLocationSuccess, onLocationError, options);
+        }
+
+        // Check if we're running in a secure context
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+            updateLocationStatus('⚠️ HTTPS required for GPS', 'error');
+        } else {
+            startLocationTracking();
+        }
+
+        // Refresh weather alerts every 5 minutes
+        setInterval(() => {
+            if (currentLat && currentLon) {
+                fetchWeatherAlerts(currentLat, currentLon);
+            }
+        }, 5 * 60 * 1000); // 5 minutes
+
+        // Connection status monitoring
+        setInterval(() => {
+            if (lastLocationUpdate && Date.now() - lastLocationUpdate > 60000) {
+                updateLocationStatus('⚠️ Location data stale', 'error');
+            }
+        }, 10000);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+            }
+        });
+    </script>
+</body>
+</html>
