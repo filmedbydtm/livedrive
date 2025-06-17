@@ -1,5 +1,4 @@
 <?php
-// Get POST body
 $data = json_decode(file_get_contents("php://input"), true);
 
 if (isset($data['latitude']) && isset($data['longitude'])) {
@@ -8,10 +7,9 @@ if (isset($data['latitude']) && isset($data['longitude'])) {
     $timestamp = date("Y-m-d H:i:s");
     $entry = "$timestamp - Lat: $lat, Lon: $lon\n";
 
-    // Save to file
     file_put_contents("locations.txt", $entry, FILE_APPEND);
     echo "Location saved";
 } else {
-    echo "Invalid data";
+    echo "Invalid input";
 }
 ?>
