@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Location Tracker</title>
+</head>
+<body>
+  <h2>Tracking your location every 60 seconds...</h2>
+  <p id="status">Initializing...</p>
+
+  <script>
+    function sendLocation(lat, lon) {
+      fetch('save_location.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ latitude: lat, longitude: lon })
+      })
+      .then(response => response.text())
+      .then(data => console.log(data))
+      .catch(error => console.error('Error sending location:', error));
+    }
+
+    function getLocationAndSend() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(position => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          document.getElementById('status').innerText = `Location: ${lat}, ${lon}`;
+          sendLocation(lat, lon);
+        }, err => {
+          console.error(err);
+          document.getElementById('status').innerText = 'Error getting location';
+        });
+      } else {
+        document.getElementById('status').innerText = 'Geolocation is not supported by this browser.';
+      }
+    }
+
+    // Initial call
+    getLocationAndSend();
+    // Repeat every 60 seconds
+    setInterval(getLocationAndSend, 60000);
+  </script>
+</body>
+</html>

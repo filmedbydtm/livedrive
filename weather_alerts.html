@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Weather Alerts</title>
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .alert {
+      font-size: 24px;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 10px;
+    }
+    .watch {
+      color: yellow;
+    }
+    .warning {
+      color: red;
+      animation: flash 1s infinite;
+    }
+    .tornado-watch {
+      color: orange;
+    }
+    .tornado-warning {
+      color: purple;
+      animation: flash 1s infinite;
+    }
+    @keyframes flash {
+      0%   { opacity: 1; }
+      50%  { opacity: 0; }
+      100% { opacity: 1; }
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 14px;
+      color: gray;
+    }
+  </style>
+</head>
+<body>
+  <h1>Live Weather Alerts</h1>
+  <div id="alerts">Loading...</div>
+  <div id="status"></div>
+
+  <script>
+    async function fetchLocation() {
+      const response = await fetch('read_location.php');
+      const text = await response.text();
+      const lines = text.trim().split('\n');
+      const lastLine = lines[lines.length - 1];
+      const match = lastLine.match(/Lat:\s*([\d.-]+),\s*Lon:\s*([\d.-]+)/);
+      if (match) {
+        return { lat: match[1], lon: match[2] };
+      }
+      throw new Error('Invalid location data');
+    }
+
+    async function fetchAlerts(lat, lon) {
+      const url = `https://api.weather.gov/alerts/active?point=${lat},${lon}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("weather.gov API error");
+      return response.json();
+    }
+
+    function getAlertClass(event) {
+      const lower = event.toLowerCase();
+      if (lower.includes("tornado warning")) return "tornado-warning";
+      if (lower.includes("tornado watch")) return "tornado-watch";
+      if (lower.includes("warning")) return "warning";
+      if (lower.includes("watch")) return "watch";
+      return "";
+    }
+
+    function displayAlerts(data) {
+      const container = document.getElementById("alerts");
+      container.innerHTML = "";
+
+      if (data.features.length === 0) {
+        container.innerHTML = `<div class="alert">No Active Weather Alerts</div>`;
+        return;
+      }
+
+      data.features.forEach(feature => {
+        const event = feature.properties.event;
+        const className = `alert ${getAlertClass(event)}`;
+        const headline = feature.properties.headline || event;
+        container.innerHTML += `<div class="${className}">${headline}</div>`;
+      });
+    }
+
+    async function update() {
+      const status = document.getElementById('status');
+      try {
+        const { lat, lon } = await fetchLocation();
+        const data = await fetchAlerts(lat, lon);
+        displayAlerts(data);
+        status.textContent = `Last updated: ${new Date().toLocaleTimeString()} (Lat: ${lat}, Lon: ${lon})`;
+      } catch (err) {
+        console.error(err);
+        document.getElementById("alerts").innerHTML = `<div class="alert warning">Error: ${err.message}</div>`;
+      }
+    }
+
+    update();
+    setInterval(update, 60000); // Every 60 seconds
+  </script>
+</body>
+</html>
