@@ -2,70 +2,65 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Live Weather Alerts</title>
   <style>
     body {
-      background-color: black;
+      background-color: transparent;
       color: white;
       font-family: Arial, sans-serif;
       padding: 20px;
     }
+
     .alert {
       font-size: 24px;
       margin: 10px 0;
       padding: 10px;
       border-radius: 10px;
     }
+
     .watch {
       color: yellow;
     }
+
     .warning {
       color: red;
       animation: flash 1s infinite;
     }
+
     .tornado-watch {
       color: orange;
     }
+
     .tornado-warning {
       color: purple;
       animation: flash 1s infinite;
     }
+
     @keyframes flash {
       0%   { opacity: 1; }
       50%  { opacity: 0; }
       100% { opacity: 1; }
     }
+
     #status {
-      margin-top: 20px;
       font-size: 14px;
       color: gray;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <h1>Live Weather Alerts</h1>
-  <div id="alerts">Loading...</div>
+  <div id="alerts">Loading current location...</div>
   <div id="status"></div>
 
-  <script>
-    async function fetchLocation() {
-      const response = await fetch('read_location.php');
-      const text = await response.text();
-      const lines = text.trim().split('\n');
-      const lastLine = lines[lines.length - 1];
-      const match = lastLine.match(/Lat:\s*([\d.-]+),\s*Lon:\s*([\d.-]+)/);
-      if (match) {
-        return { lat: match[1], lon: match[2] };
-      }
-      throw new Error('Invalid location data');
-    }
+  <!-- 🔊 Hidden audio player -->
+  <audio id="alertSound">
+    <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" type="audio/ogg">
+    <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
 
-    async function fetchAlerts(lat, lon) {
-      const url = `https://api.weather.gov/alerts/active?point=${lat},${lon}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("weather.gov API error");
-      return response.json();
-    }
+  <script>
+    const alertSound = document.getElementById("alertSound");
 
     function getAlertClass(event) {
       const lower = event.toLowerCase();
@@ -85,29 +80,29 @@
         return;
       }
 
+      let warningFound = false;
+
       data.features.forEach(feature => {
         const event = feature.properties.event;
         const className = `alert ${getAlertClass(event)}`;
         const headline = feature.properties.headline || event;
         container.innerHTML += `<div class="${className}">${headline}</div>`;
-      });
-    }
 
-    async function update() {
-      const status = document.getElementById('status');
-      try {
-        const { lat, lon } = await fetchLocation();
-        const data = await fetchAlerts(lat, lon);
-        displayAlerts(data);
-        status.textContent = `Last updated: ${new Date().toLocaleTimeString()} (Lat: ${lat}, Lon: ${lon})`;
-      } catch (err) {
-        console.error(err);
-        document.getElementById("alerts").innerHTML = `<div class="alert warning">Error: ${err.message}</div>`;
+        const lower = event.toLowerCase();
+        if (lower.includes("warning")) warningFound = true;
+      });
+
+      if (warningFound) {
+        alertSound.currentTime = 0;
+        alertSound.play().catch(e => {
+          console.log("Audio playback blocked by browser until user interaction");
+        });
       }
     }
 
-    update();
-    setInterval(update, 60000); // Every 60 seconds
+    async function fetchAlerts(lat, lon) {
+      const apiUrl = `https://api.weather.gov/alerts/active?point=${lat},${l
+
   </script>
 </body>
 </html>
