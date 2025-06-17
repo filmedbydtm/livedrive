@@ -12,36 +12,31 @@
     function sendLocation(lat, lon) {
       fetch('save_location.php', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ latitude: lat, longitude: lon })
       })
-      .then(response => response.text())
-      .then(data => console.log(data))
-      .catch(error => console.error('Error sending location:', error));
+      .then(res => res.text())
+      .then(msg => console.log("Server response:", msg))
+      .catch(err => console.error("Error sending location:", err));
     }
 
     function getLocationAndSend() {
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(position => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          document.getElementById('status').innerText = `Location: ${lat}, ${lon}`;
+        navigator.geolocation.getCurrentPosition(pos => {
+          const lat = pos.coords.latitude.toFixed(6);
+          const lon = pos.coords.longitude.toFixed(6);
+          document.getElementById("status").textContent = `Sending location: ${lat}, ${lon}`;
           sendLocation(lat, lon);
         }, err => {
-          console.error(err);
-          document.getElementById('status').innerText = 'Error getting location';
+          document.getElementById("status").textContent = "Error: " + err.message;
         });
       } else {
-        document.getElementById('status').innerText = 'Geolocation is not supported by this browser.';
+        document.getElementById("status").textContent = "Geolocation not supported.";
       }
     }
 
-    // Initial call
-    getLocationAndSend();
-    // Repeat every 60 seconds
-    setInterval(getLocationAndSend, 60000);
+    getLocationAndSend(); // Initial send
+    setInterval(getLocationAndSend, 60000); // Every 60 seconds
   </script>
 </body>
 </html>
